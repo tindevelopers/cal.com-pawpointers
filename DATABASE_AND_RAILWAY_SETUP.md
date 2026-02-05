@@ -215,3 +215,31 @@ The repo is aligned with the **Railway deploy** when:
 1. The same env vars (above) are set locally and on Railway.  
 2. Migrations are run after schema changes and on first deploy (`db-deploy`).  
 3. The first user is created via the setup wizard or Prisma Studio/seed as above.
+
+---
+
+## 7. Email with Resend (Railway)
+
+To send Cal.com emails (booking confirmations, invites, password reset, etc.) via [Resend](https://resend.com) from your Railway instance:
+
+### 1. Resend setup
+
+1. Sign up at [resend.com](https://resend.com) and create an **API Key** (API Keys → Create API Key).
+2. In Resend, add and **verify your domain** (e.g. `pawpointers.com` or the domain used for `booking.pawpointers.com`). Resend will give you DNS records to add; after verification you can send from addresses like `notifications@pawpointers.com` or `booking@pawpointers.com`.
+3. For testing you can use Resend’s sandbox domain: `onboarding@resend.dev` (no domain verification needed, but only for testing).
+
+### 2. Railway variables
+
+In Railway: open your project → **Cal.com Web App** → **Variables**, then add:
+
+| Variable | Value |
+|----------|--------|
+| `RESEND_API_KEY` | Your Resend API key (starts with `re_`). |
+| `EMAIL_FROM` | Sender address, e.g. `notifications@pawpointers.com` or `booking@pawpointers.com`. Must be from a domain you verified in Resend (or `onboarding@resend.dev` for testing). |
+| `EMAIL_FROM_NAME` | Display name in the “From” header, e.g. `Paw Pointers` or `Cal.com`. |
+
+When `RESEND_API_KEY` is set, Cal.com uses Resend’s SMTP automatically; you do **not** set `EMAIL_SERVER_HOST` or `EMAIL_SERVER_PORT`.
+
+### 3. Redeploy
+
+After saving the variables, trigger a new deployment (e.g. **Deployments** → **Redeploy** or push a commit) so the app restarts with the new env. Then test by booking a meeting or using “Forgot password” to confirm emails are sent from Resend.
