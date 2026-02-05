@@ -14,25 +14,54 @@ import { Button } from "@calcom/ui/components/button";
 import { EmptyScreen } from "@calcom/ui/components/empty-screen";
 import { showToast } from "@calcom/ui/components/toast";
 
+const EmailClientIcon = ({ name }: { name: string }) => {
+  const icons: Record<string, JSX.Element> = {
+    Gmail: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="52 42 88 66" className="h-4 w-4" aria-hidden>
+        <path fill="#4285f4" d="M58 108h14V74L52 59v43c0 3.32 2.69 6 6 6" />
+        <path fill="#34a853" d="M120 108h14c3.32 0 6-2.69 6-6V59l-20 15" />
+        <path fill="#fbbc04" d="M120 48v26l20-15v-8c0-7.42-8.47-11.65-14.4-7.2" />
+        <path fill="#ea4335" d="M72 74V48l24 18 24-18v26L96 92" />
+        <path fill="#c5221f" d="M52 51v8l20 15V48l-5.6-4.2c-5.94-4.45-14.4-.22-14.4 7.2" />
+      </svg>
+    ),
+    Outlook: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-4 w-4" aria-hidden>
+        <path fill="#0078D4" d="M6 8v32h18v-6h-12V8h-6z" />
+        <path fill="#28A8EA" d="M24 8v8h12v24h12V8H24z" />
+        <path fill="#143157" d="M36 16v8h8v-8h-8z" />
+      </svg>
+    ),
+    Yahoo: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-4 w-4" aria-hidden>
+        <polygon fill="#5e35b1" points="4.2,14.9 11.6,14.9 16.2,26.7 21,14.9 28.3,14.9 17.1,42 9.5,42 12.6,35" />
+        <circle cx="29.3" cy="30.5" r="4.7" fill="#5e35b1" />
+      </svg>
+    ),
+    Proton: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className="h-4 w-4" aria-hidden>
+        <path fill="#6D4AFF" d="M16 2L2 12v14h12V18h4v8h12V12L16 2z" />
+      </svg>
+    ),
+  };
+  return icons[name] ?? null;
+};
+
 const EMAIL_CLIENTS = [
   {
     name: "Gmail",
-    icon: "/email-clients/gmail.svg",
     href: 'https://mail.google.com/mail/u/0/#search/%22api%2Fauth%2Fverify-email%22',
   },
   {
     name: "Outlook",
-    icon: "/email-clients/outlook.svg",
     href: "https://outlook.live.com/mail/0/",
   },
   {
     name: "Yahoo",
-    icon: "/email-clients/yahoo.svg",
     href: "https://mail.yahoo.com/d/search?p=Cal.com",
   },
   {
     name: "Proton",
-    icon: "/email-clients/proton.svg",
     href: "https://mail.proton.me",
   },
 ] as const;
@@ -42,7 +71,16 @@ function VerifyEmailPage() {
   const { data: session } = useSession();
   const router = useRouter();
   const { t, isLocaleReady } = useLocale();
-  const mutation = trpc.viewer.auth.resendVerifyEmail.useMutation();
+  const mutation = trpc.viewer.auth.resendVerifyEmail.useMutation({
+    onSuccess: (data) => {
+      if (!data?.skipped) {
+        showToast(t("send_email"), "success");
+      }
+    },
+    onError: (error) => {
+      showToast(error.message || t("unexpected_error_try_again"), "error");
+    },
+  });
   const flags = useFlagMap();
 
   useEffect(() => {
@@ -72,14 +110,17 @@ function VerifyEmailPage() {
             buttonRaw={
               <>
                 <div className="mb-4 flex flex-wrap items-center gap-2">
-                  {EMAIL_CLIENTS.map(({ name, icon, href }) => (
+                  {EMAIL_CLIENTS.map(({ name, href }) => (
                     <Button
                       key={name}
                       color="secondary"
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer">
-                      <img src={icon} alt={name} className="me-1 h-4 w-4" /> {name}
+                      <span className="me-1 inline-flex shrink-0">
+                        <EmailClientIcon name={name} />
+                      </span>{" "}
+                      {name}
                     </Button>
                   ))}
                 </div>
@@ -88,7 +129,6 @@ function VerifyEmailPage() {
                   loading={mutation.isPending}
                   onClick={() => {
                     posthog.capture("verify_email_resend_clicked");
-                    showToast(t("send_email"), "success");
                     mutation.mutate();
                   }}>
                   {t("resend_email")}
