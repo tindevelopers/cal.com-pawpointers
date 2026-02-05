@@ -47,7 +47,8 @@ RUN yarn install
 RUN yarn workspace @calcom/trpc run build
 RUN yarn --cwd packages/embeds/embed-core workspace @calcom/embed-core run build
 RUN yarn --cwd apps/web workspace @calcom/web run copy-app-store-static
-RUN yarn --cwd apps/web workspace @calcom/web run build
+# Next.js/Turbopack build is memory-heavy; ensure child processes get the same heap (Railway/CI)
+RUN NODE_OPTIONS="--max-old-space-size=${MAX_OLD_SPACE_SIZE}" yarn --cwd apps/web workspace @calcom/web run build
 RUN rm -rf node_modules/.cache .yarn/cache apps/web/.next/cache
 
 FROM node:20 AS builder-two
