@@ -16,15 +16,22 @@ function detectTransport(): SendmailTransport.Options | SMTPConnection.Options |
         pass: process.env.RESEND_API_KEY,
       },
     };
-
+    const from = process.env.EMAIL_FROM;
+    const name = process.env.EMAIL_FROM_NAME;
+    if (!from) {
+      console.error("[email] RESEND_API_KEY set but EMAIL_FROM is missing - emails will fail");
+    }
+    console.log("[email] Using Resend SMTP", `from=${from || "(missing)"}`, `name=${name || "(missing)"}`);
     return transport;
   }
 
   if (process.env.EMAIL_SERVER) {
+    console.log("[email] Using EMAIL_SERVER");
     return process.env.EMAIL_SERVER;
   }
 
   if (process.env.EMAIL_SERVER_HOST) {
+    console.log("[email] Using EMAIL_SERVER_HOST", process.env.EMAIL_SERVER_HOST);
     const port = parseInt(process.env.EMAIL_SERVER_PORT || "");
     const auth =
       process.env.EMAIL_SERVER_USER && process.env.EMAIL_SERVER_PASSWORD
@@ -47,6 +54,9 @@ function detectTransport(): SendmailTransport.Options | SMTPConnection.Options |
     return transport;
   }
 
+  console.warn(
+    "[email] No RESEND_API_KEY, EMAIL_SERVER, or EMAIL_SERVER_HOST set. Falling back to sendmail (likely to fail)."
+  );
   return {
     sendmail: true,
     newline: "unix",

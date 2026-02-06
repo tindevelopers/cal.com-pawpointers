@@ -308,6 +308,11 @@ const nextConfig = (phase: string): NextConfig => {
           source: "/login",
           destination: "/auth/login",
         },
+        // Ensure /auth/* routes (forgot-password, verify-email, etc.) are never caught by org rewrites
+        {
+          source: "/auth/:path*",
+          destination: "/auth/:path*",
+        },
         ...(isOrganizationsEnabled
           ? [
               orgDomainMatcherConfig.root

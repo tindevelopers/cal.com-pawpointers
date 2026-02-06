@@ -53,12 +53,13 @@ const passwordResetRequest = async (user: Pick<User, "email" | "name" | "locale"
   const resetLink = await createPasswordReset(email);
   const { sendPasswordResetEmail } = await import("@calcom/emails/auth-email-service");
 
-  // send email in user language
+  console.log("[passwordResetRequest] Sending reset email to", email);
   await sendPasswordResetEmail({
     language: t,
     user,
     resetLink,
   });
+  console.log("[passwordResetRequest] Reset email sent successfully to", email);
 };
 
 export { passwordResetRequest };
