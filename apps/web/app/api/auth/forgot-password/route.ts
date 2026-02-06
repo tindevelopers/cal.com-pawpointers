@@ -38,7 +38,11 @@ async function handler(req: NextRequest) {
       select: { name: true, email: true, locale: true },
     });
     // Don't leak info about whether the user exists
-    if (user) passwordResetRequest(user).catch(console.error);
+    if (user) {
+      passwordResetRequest(user).catch((err) => {
+        console.error("[forgot-password] passwordResetRequest failed:", err?.message ?? err);
+      });
+    }
     return NextResponse.json({ message: "password_reset_email_sent" }, { status: 201 });
   } catch (reason) {
     console.error(reason);

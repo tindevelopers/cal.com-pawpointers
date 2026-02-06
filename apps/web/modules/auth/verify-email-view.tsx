@@ -1,10 +1,5 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import posthog from "posthog-js";
-import { useEffect } from "react";
-
 import { useFlagMap } from "@calcom/features/flags/context/provider";
 import { APP_NAME } from "@calcom/lib/constants";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
@@ -13,6 +8,10 @@ import useEmailVerifyCheck from "@calcom/trpc/react/hooks/useEmailVerifyCheck";
 import { Button } from "@calcom/ui/components/button";
 import { EmptyScreen } from "@calcom/ui/components/empty-screen";
 import { showToast } from "@calcom/ui/components/toast";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import posthog from "posthog-js";
+import { useEffect } from "react";
 
 const EmailClientIcon = ({ name }: { name: string }) => {
   const icons: Record<string, JSX.Element> = {
@@ -34,7 +33,10 @@ const EmailClientIcon = ({ name }: { name: string }) => {
     ),
     Yahoo: (
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-4 w-4" aria-hidden>
-        <polygon fill="#5e35b1" points="4.2,14.9 11.6,14.9 16.2,26.7 21,14.9 28.3,14.9 17.1,42 9.5,42 12.6,35" />
+        <polygon
+          fill="#5e35b1"
+          points="4.2,14.9 11.6,14.9 16.2,26.7 21,14.9 28.3,14.9 17.1,42 9.5,42 12.6,35"
+        />
         <circle cx="29.3" cy="30.5" r="4.7" fill="#5e35b1" />
       </svg>
     ),
@@ -50,7 +52,7 @@ const EmailClientIcon = ({ name }: { name: string }) => {
 const EMAIL_CLIENTS = [
   {
     name: "Gmail",
-    href: 'https://mail.google.com/mail/u/0/#search/%22api%2Fauth%2Fverify-email%22',
+    href: "https://mail.google.com/mail/u/0/#search/%22api%2Fauth%2Fverify-email%22",
   },
   {
     name: "Outlook",
@@ -66,22 +68,32 @@ const EMAIL_CLIENTS = [
   },
 ] as const;
 
+const RESEND_EMAIL_TIMEOUT_MS = 35_000;
+
 function VerifyEmailPage() {
   const { data } = useEmailVerifyCheck();
   const { data: session } = useSession();
   const router = useRouter();
   const { t, isLocaleReady } = useLocale();
-  const mutation = trpc.viewer.auth.resendVerifyEmail.useMutation({
-    onSuccess: (data) => {
-      if (!data?.skipped) {
-        showToast(t("send_email"), "success");
-      }
-    },
-    onError: (error) => {
-      showToast(error.message || t("unexpected_error_try_again"), "error");
-    },
-  });
+  const mutation = trpc.viewer.auth.resendVerifyEmail.useMutation();
   const flags = useFlagMap();
+
+  const handleResendEmail = () => {
+    posthog.capture("verify_email_resend_clicked");
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(t("request_timed_out_try_again"))), RESEND_EMAIL_TIMEOUT_MS)
+    );
+    Promise.race([mutation.mutateAsync(), timeoutPromise])
+      .then((data) => {
+        if (data && !data.skipped) {
+          showToast(t("send_email"), "success");
+        }
+      })
+      .catch((err) => {
+        mutation.reset();
+        showToast(err?.message || t("unexpected_error_try_again"), "error");
+      });
+  };
 
   useEffect(() => {
     if (data?.isVerified) {
@@ -124,13 +136,7 @@ function VerifyEmailPage() {
                     </Button>
                   ))}
                 </div>
-                <Button
-                  color="minimal"
-                  loading={mutation.isPending}
-                  onClick={() => {
-                    posthog.capture("verify_email_resend_clicked");
-                    mutation.mutate();
-                  }}>
+                <Button color="minimal" loading={mutation.isPending} onClick={handleResendEmail}>
                   {t("resend_email")}
                 </Button>
               </>

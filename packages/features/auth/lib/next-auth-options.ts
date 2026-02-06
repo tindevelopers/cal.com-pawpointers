@@ -1246,10 +1246,15 @@ export const getOptions = ({
      * Used to handle the navigation right after successful login or logout
      */
     async redirect({ url, baseUrl }) {
+      if (!url) return baseUrl;
       // Allows relative callback URLs
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       // Allows callback URLs on the same domain
-      else if (new URL(url).hostname === new URL(WEBAPP_URL).hostname) return url;
+      try {
+        if (new URL(url).hostname === new URL(WEBAPP_URL).hostname) return url;
+      } catch {
+        // Invalid URL, fall back to baseUrl
+      }
       return baseUrl;
     },
   },

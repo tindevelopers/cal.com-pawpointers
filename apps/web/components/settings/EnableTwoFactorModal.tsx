@@ -108,10 +108,21 @@ const EnableTwoFactorModal = ({ onEnable, onCancel, open, onOpenChange }: Enable
         return;
       }
 
-      if (body.error === ErrorCode.IncorrectPassword) {
-        setErrorMessage(t("incorrect_password"));
-      } else {
-        setErrorMessage(t("something_went_wrong"));
+      switch (body.error) {
+        case ErrorCode.IncorrectPassword:
+          setErrorMessage(t("incorrect_password"));
+          break;
+        case ErrorCode.ThirdPartyIdentityProviderEnabled:
+          setErrorMessage(t("2fa_disabled"));
+          break;
+        case ErrorCode.UserMissingPassword:
+          setErrorMessage(t("2fa_password_required"));
+          break;
+        case ErrorCode.TwoFactorAlreadyEnabled:
+          setErrorMessage(t("2fa_already_enabled_error"));
+          break;
+        default:
+          setErrorMessage(t("something_went_wrong"));
       }
     } catch (e) {
       setErrorMessage(t("something_went_wrong"));
@@ -140,10 +151,18 @@ const EnableTwoFactorModal = ({ onEnable, onCancel, open, onOpenChange }: Enable
         return;
       }
 
-      if (body.error === ErrorCode.IncorrectTwoFactorCode) {
-        setErrorMessage(`${t("code_is_incorrect")} ${t("please_try_again")}`);
-      } else {
-        setErrorMessage(t("something_went_wrong"));
+      switch (body.error) {
+        case ErrorCode.IncorrectTwoFactorCode:
+          setErrorMessage(`${t("code_is_incorrect")} ${t("please_try_again")}`);
+          break;
+        case ErrorCode.TwoFactorSetupRequired:
+          setErrorMessage(t("2fa_setup_required_error"));
+          break;
+        case ErrorCode.TwoFactorAlreadyEnabled:
+          setErrorMessage(t("2fa_already_enabled_error"));
+          break;
+        default:
+          setErrorMessage(t("something_went_wrong"));
       }
     } catch (e) {
       setErrorMessage(t("something_went_wrong"));

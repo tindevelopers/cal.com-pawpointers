@@ -9,7 +9,6 @@ import classNames from "@calcom/ui/classNames";
 
 import { Alert } from "../../alert";
 import { Icon } from "../../icon";
-import { Tooltip } from "../../tooltip";
 import { Input, InputField, inputStyles } from "../inputs/TextField";
 import { Label } from "./Label";
 import type { InputFieldProps } from "./types";
@@ -37,20 +36,20 @@ export const PasswordField = forwardRef<HTMLInputElement, InputFieldProps>(funct
         props.className
       )}
       addOnSuffix={
-        <Tooltip content={textLabel}>
-          <button
-            className="text-emphasis h-9"
-            tabIndex={-1}
-            type="button"
-            onClick={() => toggleIsPasswordVisible()}>
-            {isPasswordVisible ? (
-              <Icon name="eye-off" className="h-4 w-4 stroke-[2.5px]" />
-            ) : (
-              <Icon name="eye" className="h-4 w-4 stroke-[2.5px]" />
-            )}
-            <span className="sr-only">{textLabel}</span>
-          </button>
-        </Tooltip>
+        <button
+          className="text-emphasis h-9"
+          tabIndex={-1}
+          type="button"
+          title={textLabel}
+          aria-label={textLabel}
+          onClick={() => toggleIsPasswordVisible()}>
+          {isPasswordVisible ? (
+            <Icon name="eye-off" className="h-4 w-4 stroke-[2.5px]" />
+          ) : (
+            <Icon name="eye" className="h-4 w-4 stroke-[2.5px]" />
+          )}
+          <span className="sr-only">{textLabel}</span>
+        </button>
       }
     />
   );

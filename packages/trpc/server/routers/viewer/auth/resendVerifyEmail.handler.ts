@@ -57,12 +57,13 @@ export const resendVerifyEmail = async ({ input, ctx }: ResendEmailOptions) => {
     };
   }
 
+  console.log("[resendVerifyEmail] Sending verification email to", emailToVerify);
   const email = await sendEmailVerification({
     email: emailToVerify,
     username: ctx.user?.username ?? undefined,
     language: ctx.user.locale,
     secondaryEmailId: secondaryEmail?.id,
   });
-
+  console.log("[resendVerifyEmail] Verification email sent, ok:", email?.ok, "skipped:", email?.skipped);
   return email;
 };
