@@ -7,14 +7,23 @@ import { getAdditionalEmailHeaders } from "./getAdditionalEmailHeaders";
 
 function detectTransport(): SendmailTransport.Options | SMTPConnection.Options | string {
   if (process.env.RESEND_API_KEY) {
-    const transport = {
+    /**
+     * Resend SMTP supports both 465 (implicit TLS) and 587 (STARTTLS).
+     * Some hosts block outbound 465 which results in ETIMEDOUT. Prefer 587.
+     */
+    const transport: SMTPConnection.Options = {
       host: "smtp.resend.com",
-      secure: true,
-      port: 465,
+      port: 587,
+      secure: false,
       auth: {
         user: "resend",
         pass: process.env.RESEND_API_KEY,
       },
+      requireTLS: true,
+      // Make timeouts explicit so failures are visible quickly.
+      connectionTimeout: 30_000,
+      greetingTimeout: 30_000,
+      socketTimeout: 30_000,
     };
     const from = process.env.EMAIL_FROM;
     const name = process.env.EMAIL_FROM_NAME;
