@@ -11,16 +11,24 @@ export const Dropdown = DropdownMenuPrimitive.Root;
 
 type DropdownMenuTriggerProps = ComponentProps<(typeof DropdownMenuPrimitive)["Trigger"]>;
 export const DropdownMenuTrigger = forwardRef<HTMLButtonElement, DropdownMenuTriggerProps>(
-  ({ className = "", ...props }, forwardedRef) => (
-    <DropdownMenuPrimitive.Trigger
-      {...props}
-      className={classNames(
-        !props.asChild &&
-          `focus:bg-subtle hover:bg-cal-muted text-default group-hover:text-emphasis inline-flex items-center rounded-md bg-transparent px-3 py-2 text-sm font-medium ring-0 transition ${className}`
-      )}
-      ref={forwardedRef}
-    />
-  )
+  ({ className = "", asChild, ...props }, forwardedRef) => {
+    // When asChild is used, Radix UI handles ref forwarding internally
+    // Passing ref directly can cause React 19 warnings about element.ref
+    // So we only pass ref when asChild is false
+    const refProp = asChild ? undefined : forwardedRef;
+    
+    return (
+      <DropdownMenuPrimitive.Trigger
+        {...props}
+        asChild={asChild}
+        className={classNames(
+          !asChild &&
+            `focus:bg-subtle hover:bg-cal-muted text-default group-hover:text-emphasis inline-flex items-center rounded-md bg-transparent px-3 py-2 text-sm font-medium ring-0 transition ${className}`
+        )}
+        ref={refProp}
+      />
+    );
+  }
 );
 DropdownMenuTrigger.displayName = "DropdownMenuTrigger";
 
