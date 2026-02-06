@@ -71,8 +71,54 @@ export default class BaseEmail {
       },
       ...(parseSubject.success && { subject: decodeHTML(parseSubject.data) }),
     };
+
+    /**
+     * Prefer Resend HTTP API when RESEND_API_KEY is set.
+     *
+     * Runtime evidence: Railway egress is timing out on SMTP (ETIMEDOUT) even when using Resend SMTP,
+     * so sending via HTTPS (443) is significantly more reliable.
+     */
+    if (process.env.RESEND_API_KEY) {
+      const RESEND_API_TIMEOUT_MS = 30_000;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), RESEND_API_TIMEOUT_MS);
+
+      try {
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          },
+          body: JSON.stringify({
+            from: "from" in payloadWithUnEscapedSubject ? payloadWithUnEscapedSubject.from : undefined,
+            to: "to" in payloadWithUnEscapedSubject ? [payloadWithUnEscapedSubject.to] : undefined,
+            subject: "subject" in payloadWithUnEscapedSubject ? payloadWithUnEscapedSubject.subject : undefined,
+            html: "html" in payloadWithUnEscapedSubject ? payloadWithUnEscapedSubject.html : undefined,
+            text: "text" in payloadWithUnEscapedSubject ? payloadWithUnEscapedSubject.text : undefined,
+          }),
+        });
+
+        const json = (await res.json().catch(() => null)) as { id?: string; message?: string } | null;
+        if (!res.ok) {
+          const message = json?.message || `${res.status} ${res.statusText}`;
+          const err = new Error(`Resend API send failed: ${message}`);
+          this.printNodeMailerError(err);
+          throw err;
+        }
+
+        console.log("[email] Resend API send ok", `id=${json?.id ?? "(unknown)"}`, `name=${this.name}`);
+        return new Promise((resolve) => resolve("send mail via resend api"));
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
     const { createTransport } = await import("nodemailer");
-    await new Promise((resolve, reject) =>
+    const SEND_EMAIL_TIMEOUT_MS = 30_000;
+
+    const sendPromise = new Promise<unknown>((resolve, reject) =>
       createTransport(this.getMailerOptions().transport).sendMail(
         payloadWithUnEscapedSubject,
         (_err, info) => {
@@ -85,14 +131,24 @@ export default class BaseEmail {
           }
         }
       )
-    ).catch((e) =>
+    );
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`Email send timed out after ${SEND_EMAIL_TIMEOUT_MS}ms`)),
+        SEND_EMAIL_TIMEOUT_MS
+      )
+    );
+
+    await Promise.race([sendPromise, timeoutPromise]).catch((e) => {
       console.error(
-        "sendEmail",
+        "[email] sendEmail failed",
         `from: ${"from" in payloadWithUnEscapedSubject ? payloadWithUnEscapedSubject.from : ""}`,
         `subject: ${"subject" in payloadWithUnEscapedSubject ? payloadWithUnEscapedSubject.subject : ""}`,
         e
-      )
-    );
+      );
+      throw e;
+    });
     return new Promise((resolve) => resolve("send mail async"));
   }
   protected getMailerOptions() {
