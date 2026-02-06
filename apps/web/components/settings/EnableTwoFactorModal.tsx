@@ -88,9 +88,34 @@ const EnableTwoFactorModal = ({ onEnable, onCancel, open, onOpenChange }: Enable
     setIsSubmitting(true);
     setErrorMessage(null);
 
+    // #region agent log
+    console.error("[2FA_SETUP_CLIENT] handleSetup called", { passwordLength: password.length });
+    // #endregion
+
     try {
       const response = await TwoFactorAuthAPI.setup(password);
-      const body = await response.json();
+      // #region agent log
+      console.error("[2FA_SETUP_CLIENT] Response received", { status: response.status, statusText: response.statusText, contentType: response.headers.get("content-type") });
+      // #endregion
+      
+      let body;
+      try {
+        const text = await response.text();
+        // #region agent log
+        console.error("[2FA_SETUP_CLIENT] Response text", { text: text.substring(0, 200), length: text.length });
+        // #endregion
+        body = JSON.parse(text);
+      } catch (parseError) {
+        // #region agent log
+        console.error("[2FA_SETUP_CLIENT] JSON parse failed", { error: parseError instanceof Error ? parseError.message : String(parseError) });
+        // #endregion
+        setErrorMessage(`${t("something_went_wrong")} (Invalid response)`);
+        return;
+      }
+      
+      // #region agent log
+      console.error("[2FA_SETUP_CLIENT] Body parsed", { hasError: !!body.error, error: body.error, hasSecret: !!body.secret, hasDataUri: !!body.dataUri, status: response.status });
+      // #endregion
 
       if (response.status === 200) {
         setBackupCodes(body.backupCodes);
@@ -105,8 +130,15 @@ const EnableTwoFactorModal = ({ onEnable, onCancel, open, onOpenChange }: Enable
         setDataUri(body.dataUri);
         setSecret(body.secret);
         setStep(SetupStep.DisplayQrCode);
+        // #region agent log
+        console.error("[2FA_SETUP_CLIENT] Success path");
+        // #endregion
         return;
       }
+
+      // #region agent log
+      console.error("[2FA_SETUP_CLIENT] Error path", { status: response.status, error: body.error });
+      // #endregion
 
       switch (body.error) {
         case ErrorCode.IncorrectPassword:
@@ -122,10 +154,16 @@ const EnableTwoFactorModal = ({ onEnable, onCancel, open, onOpenChange }: Enable
           setErrorMessage(t("2fa_already_enabled_error"));
           break;
         default:
-          setErrorMessage(t("something_went_wrong"));
+          // #region agent log
+          console.error("[2FA_SETUP_CLIENT] Default error case", { error: body.error, status: response.status, fullBody: JSON.stringify(body) });
+          // #endregion
+          setErrorMessage(`${t("something_went_wrong")} (${body.error || "Unknown error"})`);
       }
     } catch (e) {
-      setErrorMessage(t("something_went_wrong"));
+      // #region agent log
+      console.error("[2FA_SETUP_CLIENT] Exception caught", { errorMessage: e instanceof Error ? e.message : String(e), errorName: e instanceof Error ? e.name : "unknown", stack: e instanceof Error ? e.stack : undefined });
+      // #endregion
+      setErrorMessage(`${t("something_went_wrong")} (${e instanceof Error ? e.message : String(e)})`);
       console.error(t("error_enabling_2fa"), e);
     } finally {
       setIsSubmitting(false);
